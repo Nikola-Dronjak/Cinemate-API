@@ -1,6 +1,6 @@
 const Joi = require('joi');
 
-module.exports = function validateUser(user) {
+module.exports = function validateUser(user, { isUpdate = false } = {}) {
     const schema = Joi.object(
         {
             username: Joi.string().min(6).max(255).required().messages({
@@ -15,13 +15,18 @@ module.exports = function validateUser(user) {
                 'string.max': 'The email cannot excede 255 characters.',
                 'any.required': 'You must enter an email address.'
             }),
-            password: Joi.string().min(8).max(255).required().messages({
-                'string.empty': 'Password cannot be empty.',
-                'string.min': 'The password has to have at least 8 characters',
-                'string.max': 'The password cannot excede 255 characters.',
-                'any.required': 'You must enter a password.'
-            })
+            password: isUpdate
+                ? Joi.string().min(8).max(255).optional().allow('').messages({
+                    'string.min': 'The password has to have at least 8 characters',
+                    'string.max': 'The password cannot excede 255 characters.'
+                })
+                : Joi.string().min(8).max(255).required().messages({
+                    'string.empty': 'Password cannot be empty.',
+                    'string.min': 'The password has to have at least 8 characters',
+                    'string.max': 'The password cannot excede 255 characters.',
+                    'any.required': 'You must enter a password.'
+                })
         }
-    );
+    ).unknown(true);
     return schema.validate(user);
 }

@@ -22,7 +22,7 @@ router.post('/', async (req, res) => {
     try {
         await client.connect();
 
-        const { error } = validateUser(req.body);
+        const { error } = validateUser(req.body, { isUpdate: false });
         if (error) return res.status(400).send(error.details[0].message);
 
         const username = await client.db('Cinemate').collection('users').findOne({ username: req.body.username });
@@ -37,7 +37,8 @@ router.post('/', async (req, res) => {
             username: req.body.username,
             email: req.body.email,
             password: await bcrypt.hash(req.body.password, salt),
-            isAdmin: false
+            isAdmin: false,
+            profilePicture: null
         };
 
         await client.db('Cinemate').collection('users').insertOne(newUser);
