@@ -1,7 +1,7 @@
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const express = require('express');
 const router = express.Router();
-const multer = require('multer');
+const formidable = require('formidable');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
@@ -9,19 +9,9 @@ const auth = require('../middleware/auth');
 const admin = require('../middleware/admin');
 
 const validateMovie = require('../validation/movieValidation');
+const { title } = require('process');
 
 const uri = "mongodb+srv://Admin:admin@cluster0.cv0sz3z.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
-
-// Set up multer storage configuration
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, 'images/');
-    },
-    filename: (req, file, cb) => {
-        const uniqueSuffix = crypto.randomBytes(16).toString('hex');
-        cb(null, uniqueSuffix + path.extname(file.originalname));
-    }
-});
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
@@ -105,46 +95,44 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-const upload = multer({ storage: storage });
-
-// Image upload:
-router.post('/upload', [auth, admin, upload.single('image')], (req, res) => {
-    if (!req.file) {
-        return res.status(400).send('No image file uploaded.');
-    }
-
-    const imageUrl = req.file.filename;
-    if (req.body.oldImageUrl) {
-        const oldImagePath = path.join(__dirname, '../images', req.body.oldImageUrl);
-        fs.unlink(oldImagePath, (err) => {
-            if (err) {
-                console.error(`Failed to delete old image: ${oldImagePath}`, err);
-            }
-        });
-    }
-    res.status(200).send({ imageUrl: imageUrl });
-});
-
 // Create a movie:
 router.post('/', [auth, admin], async (req, res) => {
+    form.parse(req, async (err, fields, files) => {
+        if (err) {
+            return res.status(500).send("File parsing failed.");
+        }
+
+        fields.duration = Number(fields.duration);
+        fields.rating = Number(fields.rating);
+        const { error } = validateMovie(fields);
+        if (error) return res.status(400).send(error.details[0].message);
+
+        const file = files.image;
+        if (!file) {
+            return res.status(400).send("Missing required fields or image.");
+        }
+    });
+
     try {
         await client.connect();
 
-        const { error } = validateMovie(req.body);
-        if (error) return res.status(400).send(error.details[0].message);
-
-        const existingMovie = await client.db('Cinemate').collection('movies').findOne({ title: req.body.title });
+        const existingMovie = await client.db('Cinemate').collection('movies').findOne({ title: fields.title });
         if (existingMovie !== null) return res.status(400).send("This movie already exists.");
 
+        const uniqueName = crypto.randomBytes(16).toString('hex') + path.extname(file.originalFilename);
+        const blob = await put(uniqueName, file.filepath, {
+            access: 'public',
+        });
+
         const newMovie = {
-            title: req.body.title,
-            description: req.body.description,
-            genre: req.body.genre,
-            director: req.body.director,
-            releaseDate: req.body.releaseDate,
-            duration: req.body.duration,
-            image: req.body.image,
-            rating: req.body.rating
+            title: title,
+            description: description,
+            genre: genre,
+            director: director,
+            releaseDate: releaseDate,
+            duration: duration,
+            image: blob.url,
+            rating: rating
         };
 
         await client.db('Cinemate').collection('movies').insertOne(newMovie);
