@@ -3,7 +3,9 @@ const Joi = require('joi');
 module.exports = function validateCinema(cinema) {
     const schema = Joi.object(
         {
-            _id: Joi.forbidden(),
+            _id: Joi.any().forbidden().messages({
+                'any.unknown': '_id is not allowed.'
+            }),
             name: Joi.string().min(5).max(255).required().messages({
                 'string.empty': 'Name cannot be empty.',
                 'string.min': 'The name has to have at least 5 characters.',
