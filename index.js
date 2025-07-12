@@ -2,6 +2,8 @@ const cors = require('cors');
 const express = require('express');
 const app = express();
 
+const { connectToDatabase } = require('./database/db');
+
 const register = require('./routes/register');
 const login = require('./routes/login');
 const user = require('./routes/user');
@@ -30,4 +32,13 @@ app.use('/api/screenings', screening);
 app.use('/api/reservations', reservation);
 
 const port = process.env.PORT || 3000;
-app.listen(port, () => console.log(`Listening on port ${port}...`));
+
+(async () => {
+    try {
+        await connectToDatabase();
+        app.listen(port, () => console.log(`Listening on port ${port}...`));
+    } catch (err) {
+        client.close();
+        process.exit(1);
+    }
+})();
