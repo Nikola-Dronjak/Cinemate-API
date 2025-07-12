@@ -4,6 +4,9 @@ const Joi = require('joi');
 module.exports = function validateHall(hall) {
     const schema = Joi.object(
         {
+            _id: Joi.any().forbidden().messages({
+                'any.unknown': '_id is not allowed.'
+            }),
             name: Joi.string().min(5).max(255).required().messages({
                 'string.empty': 'Name cannot be empty.',
                 'string.min': 'The name has to have at least 5 characters.',
@@ -17,7 +20,7 @@ module.exports = function validateHall(hall) {
                 'any.required': 'You must enter the number of seats in a hall.'
             }),
             cinemaId: Joi.string().required().custom((value, helpers) => {
-                if(!ObjectId.isValid(value)){
+                if (!ObjectId.isValid(value)) {
                     return helpers.error('any.invalid');
                 }
             }).messages({
