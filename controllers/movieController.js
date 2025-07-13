@@ -14,14 +14,14 @@ const movieController = {
                 ...movie,
                 links: [
                     { rel: 'self', href: `${req.protocol}://${req.get("host")}/api/movies/${movie._id}`, action: 'GET', types: [] },
-                    { rel: 'self', href: `${req.protocol}://${req.get("host")}/api/movies/${movie._id}`, action: 'PUT', types: ["application/json"] },
+                    { rel: 'self', href: `${req.protocol}://${req.get("host")}/api/movies/${movie._id}`, action: 'PUT', types: ["multipart/form-data"] },
                     { rel: 'self', href: `${req.protocol}://${req.get("host")}/api/movies/${movie._id}`, action: 'DELETE', types: [] }
                 ]
             }));
             return res.status(200).send({
                 movies,
                 links: [
-                    { rel: 'self', href: `${req.protocol}://${req.get("host")}/api/movies`, action: 'POST', types: ["application/json"] }
+                    { rel: 'self', href: `${req.protocol}://${req.get("host")}/api/movies`, action: 'POST', types: ["multipart/form-data"] }
                 ]
             });
         } catch (error) {
@@ -39,7 +39,7 @@ const movieController = {
                 links: [
                     { rel: 'self', href: `${req.protocol}://${req.get("host")}/api/movies`, action: 'GET', types: [] },
                     { rel: 'self', href: `${req.protocol}://${req.get("host")}/api/movies/${movie._id}`, action: 'GET', types: [] },
-                    { rel: 'self', href: `${req.protocol}://${req.get("host")}/api/movies/${movie._id}`, action: 'PUT', types: ["application/json"] },
+                    { rel: 'self', href: `${req.protocol}://${req.get("host")}/api/movies/${movie._id}`, action: 'PUT', types: ["multipart/form-data"] },
                     { rel: 'self', href: `${req.protocol}://${req.get("host")}/api/movies/${movie._id}`, action: 'DELETE', types: [] }
                 ]
             });
@@ -78,7 +78,7 @@ const movieController = {
                 links: [
                     { rel: 'self', href: `${req.protocol}://${req.get("host")}/api/movies`, action: 'GET', types: [] },
                     { rel: 'self', href: `${req.protocol}://${req.get("host")}/api/movies/${newMovie._id}`, action: 'GET', types: [] },
-                    { rel: 'self', href: `${req.protocol}://${req.get("host")}/api/movies/${newMovie._id}`, action: 'PUT', types: ["application/json"] },
+                    { rel: 'self', href: `${req.protocol}://${req.get("host")}/api/movies/${newMovie._id}`, action: 'PUT', types: ["multipart/form-data"] },
                     { rel: 'self', href: `${req.protocol}://${req.get("host")}/api/movies/${newMovie._id}`, action: 'DELETE', types: [] }
                 ]
             });
@@ -132,7 +132,7 @@ const movieController = {
                 links: [
                     { rel: 'self', href: `${req.protocol}://${req.get("host")}/api/movies`, action: 'GET', types: [] },
                     { rel: 'self', href: `${req.protocol}://${req.get("host")}/api/movies/${updatedMovie._id}`, action: 'GET', types: [] },
-                    { rel: 'self', href: `${req.protocol}://${req.get("host")}/api/movies/${updatedMovie._id}`, action: 'PUT', types: ["application/json"] },
+                    { rel: 'self', href: `${req.protocol}://${req.get("host")}/api/movies/${updatedMovie._id}`, action: 'PUT', types: ["multipart/form-data"] },
                     { rel: 'self', href: `${req.protocol}://${req.get("host")}/api/movies/${updatedMovie._id}`, action: 'DELETE', types: [] }
                 ]
             });
