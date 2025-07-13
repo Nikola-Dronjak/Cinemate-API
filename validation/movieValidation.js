@@ -40,10 +40,6 @@ module.exports = function validateMovie(movie) {
                 'number.max': 'The duration of the movie cannot excede 240 minutes.',
                 'any.required': 'You must enter the duration of the movie in minutes.'
             }),
-            // image: Joi.string().required().messages({
-            //     'string.empty': 'Image string cannot be empty.',
-            //     'any.required': 'You must enter an image string.'
-            // }),
             rating: Joi.number().min(1).max(10).required().messages({
                 'number.base': 'The rating must be a valid number.',
                 'number.min': 'The rating of the movie cannot be less than 1.',
