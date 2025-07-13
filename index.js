@@ -27,7 +27,7 @@ app.use('/api/login', login);
 app.use('/api/users', user);
 app.use('/api/cinemas', cinema);
 app.use(hall);
-app.use('/api/movies', movie);
+app.use(movie);
 app.use('/api/screenings', screening);
 app.use('/api/reservations', reservation);
 

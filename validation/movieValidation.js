@@ -3,6 +3,9 @@ const Joi = require('joi');
 module.exports = function validateMovie(movie) {
     const schema = Joi.object(
         {
+            _id: Joi.any().forbidden().messages({
+                'any.unknown': '_id is not allowed.'
+            }),
             title: Joi.string().min(2).max(255).required().messages({
                 'string.empty': 'Title cannot be empty.',
                 'string.min': 'The title has to have at least 2 characters.',
@@ -37,10 +40,10 @@ module.exports = function validateMovie(movie) {
                 'number.max': 'The duration of the movie cannot excede 240 minutes.',
                 'any.required': 'You must enter the duration of the movie in minutes.'
             }),
-            image: Joi.string().required().messages({
-                'string.empty': 'Image string cannot be empty.',
-                'any.required': 'You must enter an image string.'
-            }),
+            // image: Joi.string().required().messages({
+            //     'string.empty': 'Image string cannot be empty.',
+            //     'any.required': 'You must enter an image string.'
+            // }),
             rating: Joi.number().min(1).max(10).required().messages({
                 'number.base': 'The rating must be a valid number.',
                 'number.min': 'The rating of the movie cannot be less than 1.',
