@@ -29,7 +29,7 @@ app.use('/api/cinemas', cinema);
 app.use(hall);
 app.use(movie);
 app.use(screening);
-app.use('/api/reservations', reservation);
+app.use(reservation);
 
 const port = process.env.PORT || 3000;
 

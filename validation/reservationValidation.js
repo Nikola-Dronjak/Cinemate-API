@@ -4,6 +4,9 @@ const Joi = require('joi');
 module.exports = function validateScreening(screening) {
     const schema = Joi.object(
         {
+            _id: Joi.any().forbidden().messages({
+                'any.unknown': '_id is not allowed.'
+            }),
             userId: Joi.string().required().custom((value, helpers) => {
                 if (!ObjectId.isValid(value)) {
                     return helpers.error('any.invalid');
