@@ -10,6 +10,7 @@ const screeningController = {
             if (!movie) return res.status(404).send({ message: "There is no movie with the given id." });
 
             var screeningsOfMovie = await getDb().collection('screenings').find({ movieId: req.params.movieId }).toArray();
+            if (screeningsOfMovie.length === 0) return res.status(404).send({ message: "There are no screenings for this movie right now." });
             screeningsOfMovie = screeningsOfMovie.map(screening => ({
                 ...screening,
                 links: [
@@ -36,8 +37,9 @@ const screeningController = {
             const hall = await getDb().collection('halls').findOne({ _id: new ObjectId(req.params.hallId) });
             if (!hall) return res.status(404).send({ message: "There is no hall with the given id." });
 
-            var screeningsOfMovie = await getDb().collection('screenings').find({ hallId: req.params.hallId }).toArray();
-            screeningsOfMovie = screeningsOfMovie.map(screening => ({
+            var screeningsForHall = await getDb().collection('screenings').find({ hallId: req.params.hallId }).toArray();
+            if (screeningsForHall.length === 0) return res.status(404).send({ message: "There are no screenings in this hall right now." });
+            screeningsForHall = screeningsForHall.map(screening => ({
                 ...screening,
                 links: [
                     { rel: 'self', href: `${req.protocol}://${req.get("host")}/api/screenings/${screening._id}`, action: 'GET', types: [] },
@@ -46,7 +48,7 @@ const screeningController = {
                 ]
             }));
             return res.status(200).send({
-                screeningsOfMovie,
+                screeningsForHall,
                 links: [
                     { rel: 'hall', href: `${req.protocol}://${req.get("host")}/api/halls/${hall._id}`, action: 'GET', types: [] },
                     { rel: 'self', href: `${req.protocol}://${req.get("host")}/api/screenings`, action: 'POST', types: ["application/json"] }
