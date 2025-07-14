@@ -28,7 +28,7 @@ app.use('/api/users', user);
 app.use('/api/cinemas', cinema);
 app.use(hall);
 app.use(movie);
-app.use('/api/screenings', screening);
+app.use(screening);
 app.use('/api/reservations', reservation);
 
 const port = process.env.PORT || 3000;

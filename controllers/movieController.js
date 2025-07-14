@@ -37,6 +37,7 @@ const movieController = {
             return res.status(200).send({
                 ...movie,
                 links: [
+                    { rel: 'screening', href: `${req.protocol}://${req.get("host")}/api/movies/${movie._id}/screenings`, action: 'GET', types: [] },
                     { rel: 'self', href: `${req.protocol}://${req.get("host")}/api/movies`, action: 'GET', types: [] },
                     { rel: 'self', href: `${req.protocol}://${req.get("host")}/api/movies/${movie._id}`, action: 'GET', types: [] },
                     { rel: 'self', href: `${req.protocol}://${req.get("host")}/api/movies/${movie._id}`, action: 'PUT', types: ["multipart/form-data"] },

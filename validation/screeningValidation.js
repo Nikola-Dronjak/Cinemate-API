@@ -4,6 +4,9 @@ const Joi = require('joi');
 module.exports = function validateScreening(screening) {
     const schema = Joi.object(
         {
+            _id: Joi.any().forbidden().messages({
+                'any.unknown': '_id is not allowed.'
+            }),
             date: Joi.string().regex(/^(\d{4})-(0?[1-9]|1[0-2])-(0?[1-9]|[12]\d|3[01])$/).required().messages({
                 'string.pattern.base': 'Screening date must be in YYYY-MM-DD format.',
                 'any.required': 'You must enter a screening date.'
