@@ -1,15 +1,25 @@
 const { ObjectId } = require('mongodb');
 
 const { getDb } = require('../database/db');
+const validatePagination = require('../validation/paginationValidation');
 const validateScreening = require('../validation/screeningValidation');
 
 const screeningController = {
     async getScreeningsOfMovie(req, res) {
         try {
+            const { error, value } = validatePagination(req.query);
+            if (error) return res.status(400).send({ message: error.details[0].message });
+
+            const { page, limit } = value;
+            const skip = (page - 1) * limit;
+
+            const totalScreenings = await getDb().collection('screenings').countDocuments({ movieId: req.params.movieId });
+            const totalPages = Math.ceil(totalScreenings / limit);
+
             const movie = await getDb().collection('movies').findOne({ _id: new ObjectId(req.params.movieId) });
             if (!movie) return res.status(404).send({ message: "There is no movie with the given id." });
 
-            var screeningsOfMovie = await getDb().collection('screenings').find({ movieId: req.params.movieId }).toArray();
+            var screeningsOfMovie = await getDb().collection('screenings').find({ movieId: req.params.movieId }).skip(skip).limit(limit).toArray();
             if (screeningsOfMovie.length === 0) return res.status(404).send({ message: "There are no screenings for this movie right now." });
             screeningsOfMovie = screeningsOfMovie.map(screening => ({
                 ...screening,
@@ -20,9 +30,16 @@ const screeningController = {
                 ]
             }));
             return res.status(200).send({
+                page,
+                limit,
+                totalPages,
+                totalScreenings,
                 screeningsOfMovie,
                 links: [
                     { rel: 'movie', href: `${req.protocol}://${req.get("host")}/api/movies/${movie._id}`, action: 'GET', types: [] },
+                    ...(page > 1 ? [{ rel: 'prev', href: `${req.protocol}://${req.get("host")}/api/movies/${movie._id}/screenings?page=${page - 1}&limit=${limit}`, action: 'GET', types: [] }] : []),
+                    ...(page < totalPages ? [{ rel: 'next', href: `${req.protocol}://${req.get("host")}/api/movies/${movie._id}/screenings?page=${page + 1}&limit=${limit}`, action: 'GET', types: [] }] : []),
+                    { rel: 'self', href: `${req.protocol}://${req.get("host")}/api/movies/${movie._id}/screenings?page=${page}&limit=${limit}`, action: 'GET', types: [] },
                     { rel: 'self', href: `${req.protocol}://${req.get("host")}/api/screenings`, action: 'POST', types: ["application/json"] }
                 ]
             });
@@ -34,10 +51,19 @@ const screeningController = {
 
     async getScreeningsForHall(req, res) {
         try {
+            const { error, value } = validatePagination(req.query);
+            if (error) return res.status(400).send({ message: error.details[0].message });
+
+            const { page, limit } = value;
+            const skip = (page - 1) * limit;
+
+            const totalScreenings = await getDb().collection('screenings').countDocuments({ hallId: req.params.hallId });
+            const totalPages = Math.ceil(totalScreenings / limit);
+
             const hall = await getDb().collection('halls').findOne({ _id: new ObjectId(req.params.hallId) });
             if (!hall) return res.status(404).send({ message: "There is no hall with the given id." });
 
-            var screeningsForHall = await getDb().collection('screenings').find({ hallId: req.params.hallId }).toArray();
+            var screeningsForHall = await getDb().collection('screenings').find({ hallId: req.params.hallId }).skip(skip).limit(limit).toArray();
             if (screeningsForHall.length === 0) return res.status(404).send({ message: "There are no screenings in this hall right now." });
             screeningsForHall = screeningsForHall.map(screening => ({
                 ...screening,
@@ -48,9 +74,16 @@ const screeningController = {
                 ]
             }));
             return res.status(200).send({
+                page,
+                limit,
+                totalPages,
+                totalScreenings,
                 screeningsForHall,
                 links: [
                     { rel: 'hall', href: `${req.protocol}://${req.get("host")}/api/halls/${hall._id}`, action: 'GET', types: [] },
+                    ...(page > 1 ? [{ rel: 'prev', href: `${req.protocol}://${req.get("host")}/api/halls/${hall._id}/screenings?page=${page - 1}&limit=${limit}`, action: 'GET', types: [] }] : []),
+                    ...(page < totalPages ? [{ rel: 'next', href: `${req.protocol}://${req.get("host")}/api/halls/${hall._id}/screenings?page=${page + 1}&limit=${limit}`, action: 'GET', types: [] }] : []),
+                    { rel: 'self', href: `${req.protocol}://${req.get("host")}/api/halls/${hall._id}/screenings?page=${page}&limit=${limit}`, action: 'GET', types: [] },
                     { rel: 'self', href: `${req.protocol}://${req.get("host")}/api/screenings`, action: 'POST', types: ["application/json"] }
                 ]
             });

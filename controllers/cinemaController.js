@@ -1,12 +1,22 @@
 const { ObjectId } = require('mongodb');
 
 const { getDb } = require('../database/db');
+const validatePagination = require('../validation/paginationValidation');
 const validateCinema = require('../validation/cinemaValidation');
 
 const cinemaController = {
     async getCinemas(req, res) {
         try {
-            var cinemas = await getDb().collection('cinemas').find().toArray();
+            const { error, value } = validatePagination(req.query);
+            if (error) return res.status(400).send({ message: error.details[0].message });
+
+            const { page, limit } = value;
+            const skip = (page - 1) * limit;
+
+            const totalCinemas = await getDb().collection('cinemas').countDocuments();
+            const totalPages = Math.ceil(totalCinemas / limit);
+
+            var cinemas = await getDb().collection('cinemas').find().skip(skip).limit(limit).toArray();
             if (cinemas.length === 0) return res.status(404).send({ message: "There are no cinemas in the database right now." });
             cinemas = cinemas.map(cinema => ({
                 ...cinema,
@@ -17,8 +27,15 @@ const cinemaController = {
                 ]
             }));
             return res.status(200).send({
+                page,
+                limit,
+                totalPages,
+                totalCinemas,
                 cinemas,
                 links: [
+                    ...(page > 1 ? [{ rel: 'prev', href: `${req.protocol}://${req.get("host")}/api/cinemas?page=${page - 1}&limit=${limit}`, action: 'GET', types: [] }] : []),
+                    ...(page < totalPages ? [{ rel: 'next', href: `${req.protocol}://${req.get("host")}/api/cinemas?page=${page + 1}&limit=${limit}`, action: 'GET', types: [] }] : []),
+                    { rel: 'self', href: `${req.protocol}://${req.get("host")}/api/cinemas?page=${page}&limit=${limit}`, action: 'GET', types: [] },
                     { rel: 'self', href: `${req.protocol}://${req.get("host")}/api/cinemas`, action: 'POST', types: ["application/json"] }
                 ]
             });

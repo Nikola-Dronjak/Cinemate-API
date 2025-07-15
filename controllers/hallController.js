@@ -1,15 +1,25 @@
 const { ObjectId } = require('mongodb');
 
 const { getDb } = require('../database/db');
+const validatePagination = require('../validation/paginationValidation');
 const validateHall = require('../validation/hallValidation');
 
 const hallController = {
     async getHallsOfCinema(req, res) {
         try {
+            const { error, value } = validatePagination(req.query);
+            if (error) return res.status(400).send({ message: error.details[0].message });
+
+            const { page, limit } = value;
+            const skip = (page - 1) * limit;
+
+            const totalHalls = await getDb().collection('halls').countDocuments({ cinemaId: req.params.cinemaId });
+            const totalPages = Math.ceil(totalHalls / limit);
+
             const cinema = await getDb().collection('cinemas').findOne({ _id: new ObjectId(req.params.cinemaId) });
             if (!cinema) return res.status(404).send({ message: "There is no cinema with the given id." });
 
-            var halls = await getDb().collection('halls').find({ cinemaId: req.params.cinemaId }).toArray();
+            var halls = await getDb().collection('halls').find({ cinemaId: req.params.cinemaId }).skip(skip).limit(limit).toArray();
             if (halls.length === 0) return res.status(404).send({ message: "This cinema doesnt have any halls right now." });
             halls = halls.map(hall => ({
                 ...hall,
@@ -20,9 +30,16 @@ const hallController = {
                 ]
             }));
             return res.status(200).send({
+                page,
+                limit,
+                totalPages,
+                totalHalls,
                 halls,
                 links: [
                     { rel: 'cinema', href: `${req.protocol}://${req.get("host")}/api/cinemas/${cinema._id}`, action: 'GET', types: [] },
+                    ...(page > 1 ? [{ rel: 'prev', href: `${req.protocol}://${req.get("host")}/api/cinemas/${cinema._id}/halls?page=${page - 1}&limit=${limit}`, action: 'GET', types: [] }] : []),
+                    ...(page < totalPages ? [{ rel: 'next', href: `${req.protocol}://${req.get("host")}/api/cinemas/${cinema._id}/halls?page=${page + 1}&limit=${limit}`, action: 'GET', types: [] }] : []),
+                    { rel: 'self', href: `${req.protocol}://${req.get("host")}/api/cinemas/${cinema._id}/halls?page=${page}&limit=${limit}`, action: 'GET', types: [] },
                     { rel: 'self', href: `${req.protocol}://${req.get("host")}/api/halls`, action: 'POST', types: ["application/json"] }
                 ]
             });

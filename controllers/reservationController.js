@@ -1,15 +1,25 @@
 const { ObjectId } = require('mongodb');
 
 const { getDb } = require('../database/db');
+const validatePagination = require('../validation/paginationValidation');
 const validateReservation = require('../validation/reservationValidation');
 
 const reservationController = {
     async getReservationsOfUser(req, res) {
         try {
+            const { error, value } = validatePagination(req.query);
+            if (error) return res.status(400).send({ message: error.details[0].message });
+
+            const { page, limit } = value;
+            const skip = (page - 1) * limit;
+
+            const totalReservations = await getDb().collection('reservations').countDocuments({ userId: req.params.userId });
+            const totalPages = Math.ceil(totalReservations / limit);
+
             const user = await getDb().collection('users').findOne({ _id: new ObjectId(req.params.userId) });
             if (!user) return res.status(404).send({ message: "There is no user with the given userId." });
 
-            var reservationsOfUser = await getDb().collection('reservations').find({ userId: req.params.userId }).toArray();
+            var reservationsOfUser = await getDb().collection('reservations').find({ userId: req.params.userId }).skip(skip).limit(limit).toArray();
             if (!reservationsOfUser.length) return res.status(404).send({ message: "No reservations were found for this user." });
             reservationsOfUser = reservationsOfUser.map(reservation => ({
                 ...reservation,
@@ -19,9 +29,16 @@ const reservationController = {
                 ]
             }));
             return res.status(200).send({
+                page,
+                limit,
+                totalPages,
+                totalReservations,
                 reservationsOfUser,
                 links: [
                     { rel: 'user', href: `${req.protocol}://${req.get("host")}/api/users/${user._id}`, action: 'GET', types: [] },
+                    ...(page > 1 ? [{ rel: 'prev', href: `${req.protocol}://${req.get("host")}/api/users/${user._id}/reservations?page=${page - 1}&limit=${limit}`, action: 'GET', types: [] }] : []),
+                    ...(page < totalPages ? [{ rel: 'next', href: `${req.protocol}://${req.get("host")}/api/users/${user._id}/reservations?page=${page + 1}&limit=${limit}`, action: 'GET', types: [] }] : []),
+                    { rel: 'self', href: `${req.protocol}://${req.get("host")}/api/users/${user._id}/reservations?page=${page}&limit=${limit}`, action: 'GET', types: [] },
                     { rel: 'self', href: `${req.protocol}://${req.get("host")}/api/reservations`, action: 'POST', types: ["application/json"] }
                 ]
             });

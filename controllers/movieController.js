@@ -3,12 +3,22 @@ const fs = require('fs');
 const path = require('path');
 
 const { getDb } = require('../database/db');
+const validatePagination = require('../validation/paginationValidation');
 const validateMovie = require('../validation/movieValidation');
 
 const movieController = {
     async getMovies(req, res) {
         try {
-            var movies = await getDb().collection('movies').find().toArray();
+            const { error, value } = validatePagination(req.query);
+            if (error) return res.status(400).send({ message: error.details[0].message });
+
+            const { page, limit } = value;
+            const skip = (page - 1) * limit;
+
+            const totalMovies = await getDb().collection('movies').countDocuments();
+            const totalPages = Math.ceil(totalMovies / limit);
+
+            var movies = await getDb().collection('movies').find().skip(skip).limit(limit).toArray();
             if (movies.length === 0) return res.status(404).send({ message: "There are no movies in the database right now." });
             movies = movies.map(movie => ({
                 ...movie,
@@ -19,8 +29,15 @@ const movieController = {
                 ]
             }));
             return res.status(200).send({
+                page,
+                limit,
+                totalPages,
+                totalMovies,
                 movies,
                 links: [
+                    ...(page > 1 ? [{ rel: 'prev', href: `${req.protocol}://${req.get("host")}/api/movies?page=${page - 1}&limit=${limit}`, action: 'GET', types: [] }] : []),
+                    ...(page < totalPages ? [{ rel: 'next', href: `${req.protocol}://${req.get("host")}/api/movies?page=${page + 1}&limit=${limit}`, action: 'GET', types: [] }] : []),
+                    { rel: 'self', href: `${req.protocol}://${req.get("host")}/api/movies?page=${page}&limit=${limit}`, action: 'GET', types: [] },
                     { rel: 'self', href: `${req.protocol}://${req.get("host")}/api/movies`, action: 'POST', types: ["multipart/form-data"] }
                 ]
             });
