@@ -4,8 +4,6 @@ const app = express();
 
 const { connectToDatabase } = require('./database/db');
 
-const register = require('./routes/register');
-const login = require('./routes/login');
 const user = require('./routes/user');
 const cinema = require('./routes/cinema');
 const hall = require('./routes/hall');
@@ -22,9 +20,7 @@ app.use(cors({ origin: '*' }));
 app.use('/images', express.static('images'));
 
 // Routes:
-app.use('/api/register', register);
-app.use('/api/login', login);
-app.use('/api/users', user);
+app.use(user);
 app.use('/api/cinemas', cinema);
 app.use(hall);
 app.use(movie);

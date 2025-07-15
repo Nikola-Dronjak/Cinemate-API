@@ -3,6 +3,9 @@ const Joi = require('joi');
 module.exports = function validateUser(user, { isUpdate = false } = {}) {
     const schema = Joi.object(
         {
+            _id: Joi.any().forbidden().messages({
+                'any.unknown': '_id is not allowed.'
+            }),
             username: Joi.string().min(6).max(255).required().messages({
                 'string.empty': 'Username cannot be empty.',
                 'string.min': 'The username has to have at least 6 characters.',
