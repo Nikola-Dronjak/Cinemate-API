@@ -6,18 +6,18 @@ const admin = require('../middleware/admin');
 const { cinemaController } = require('../controllers/cinemaController');
 
 // Get all cinemas:
-router.get('/', [auth, admin], cinemaController.getCinemas);
+router.get('/api/cinemas', [auth, admin], cinemaController.getCinemas);
 
 // Get a specific cinema:
-router.get('/:id', cinemaController.getCinema);
+router.get('/api/cinemas/:id', cinemaController.getCinema);
 
 // Create a cinema:
-router.post('/', [auth, admin], cinemaController.createCinema);
+router.post('/api/cinemas', [auth, admin], cinemaController.createCinema);
 
 // Update a cinema:
-router.put('/:id', [auth, admin], cinemaController.updateCinema);
+router.put('/api/cinemas/:id', [auth, admin], cinemaController.updateCinema);
 
 // Remove a cinema:
-router.delete('/:id', [auth, admin], cinemaController.deleteCinema);
+router.delete('/api/cinemas/:id', [auth, admin], cinemaController.deleteCinema);
 
 module.exports = router;

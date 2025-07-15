@@ -21,7 +21,7 @@ app.use('/images', express.static('images'));
 
 // Routes:
 app.use(user);
-app.use('/api/cinemas', cinema);
+app.use(cinema);
 app.use(hall);
 app.use(movie);
 app.use(screening);
