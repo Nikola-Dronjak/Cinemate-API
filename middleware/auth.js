@@ -8,6 +8,9 @@ module.exports = function (req, res, next) {
         req.user = decoded_payload;
         next();
     } catch (ex) {
+        if (ex.name === 'TokenExpiredError') {
+            return res.status(401).send('Token expired.');
+        }
         res.status(400).send('Invalid token.');
     }
 }

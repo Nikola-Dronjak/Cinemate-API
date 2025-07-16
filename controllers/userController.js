@@ -52,7 +52,7 @@ const userController = {
 
             const result = await getDb().collection('users').insertOne(newUser);
             newUser._id = result.insertedId;
-            const token = jwt.sign({ userId: newUser._id, isAdmin: newUser.isAdmin }, 'jwtPrivateToken');
+            const token = jwt.sign({ userId: newUser._id, isAdmin: newUser.isAdmin }, 'jwtPrivateToken', { expiresIn: '1h' });
             res.status(201).header("Location", `${req.protocol}://${req.get("host")}/api/users/${newUser._id}`).send({
                 token,
                 user: {
@@ -84,7 +84,7 @@ const userController = {
             const validPassword = await bcrypt.compare(req.body.password, user.password);
             if (!validPassword) return res.status(401).send({ message: "Invalid email or password." });
 
-            const token = jwt.sign({ userId: user._id, isAdmin: user.isAdmin }, 'jwtPrivateToken');
+            const token = jwt.sign({ userId: user._id, isAdmin: user.isAdmin }, 'jwtPrivateToken', { expiresIn: '1h' });
             res.status(200).send(token);
         } catch (error) {
             console.error(error.stack);
