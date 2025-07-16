@@ -54,7 +54,6 @@ const movieController = {
             return res.status(200).send({
                 ...movie,
                 links: [
-                    { rel: 'screening', href: `${req.protocol}://${req.get("host")}/api/movies/${movie._id}/screenings`, action: 'GET', types: [] },
                     { rel: 'self', href: `${req.protocol}://${req.get("host")}/api/movies`, action: 'GET', types: [] },
                     { rel: 'self', href: `${req.protocol}://${req.get("host")}/api/movies/${movie._id}`, action: 'GET', types: [] },
                     { rel: 'self', href: `${req.protocol}://${req.get("host")}/api/movies/${movie._id}`, action: 'PUT', types: ["multipart/form-data"] },
@@ -76,7 +75,7 @@ const movieController = {
             if (!req.file) return res.status(400).send({ message: "Movie image is required." });
 
             const existingMovie = await getDb().collection('movies').findOne({ title: req.body.title });
-            if (existingMovie !== null) return res.status(400).send({ movie: "This movie already exists." });
+            if (existingMovie !== null) return res.status(409).send({ movie: "This movie already exists." });
 
             const newMovie = {
                 title: req.body.title,
@@ -112,7 +111,7 @@ const movieController = {
             if (!movie) return res.status(404).send({ message: "There is no movie with the given id." });
 
             const screenings = await getDb().collection('screenings').find({ hallId: req.params.id }).toArray();
-            if (screenings.length > 0) return res.status(400).send({ message: "You cannot update this movie because there are screenings associated with it. Please remove all screenings associated with this movie first." });
+            if (screenings.length > 0) return res.status(409).send({ message: "You cannot update this movie because there are screenings associated with it. Please remove all screenings associated with this movie first." });
 
             const { error } = validateMovie(req.body);
             if (error) return res.status(400).send({ message: error.details[0].message });

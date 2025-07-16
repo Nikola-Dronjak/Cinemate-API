@@ -58,7 +58,6 @@ const hallController = {
                 ...hall,
                 links: [
                     { rel: 'cinema', href: `${req.protocol}://${req.get("host")}/api/cinemas/${hall.cinemaId}`, action: 'GET', types: [] },
-                    { rel: 'screening', href: `${req.protocol}://${req.get("host")}/api/halls/${hall._id}/screenings`, action: 'GET', types: [] },
                     { rel: 'self', href: `${req.protocol}://${req.get("host")}/api/cinemas/${hall.cinemaId}/halls`, action: 'GET', types: [] },
                     { rel: 'self', href: `${req.protocol}://${req.get("host")}/api/halls/${hall._id}`, action: 'GET', types: [] },
                     { rel: 'self', href: `${req.protocol}://${req.get("host")}/api/halls/${hall._id}`, action: 'PUT', types: ["application/json"] },
