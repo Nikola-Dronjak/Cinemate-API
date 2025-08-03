@@ -47,7 +47,7 @@ const userController = {
                 email: req.body.email,
                 password: await bcrypt.hash(req.body.password, salt),
                 isAdmin: false,
-                profilePicture: (req.file.filename ? req.file.filename : null)
+                profilePicture: null
             };
 
             const result = await getDb().collection('users').insertOne(newUser);

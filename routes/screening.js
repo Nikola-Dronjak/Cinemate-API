@@ -6,10 +6,10 @@ const admin = require('../middleware/admin');
 const { screeningController } = require('../controllers/screeningController');
 
 // Get screenings of movie:
-router.get('/api/movies/:movieId/screenings', [auth, admin], screeningController.getScreeningsOfMovie);
+router.get('/api/movies/:movieId/screenings', screeningController.getScreeningsOfMovie);
 
 // Get screenings for hall:
-router.get('/api/halls/:hallId/screenings', [auth, admin], screeningController.getScreeningsForHall);
+router.get('/api/halls/:hallId/screenings', screeningController.getScreeningsForHall);
 
 // Get a specific screening:
 router.get('/api/screenings/:id', screeningController.getScreening);

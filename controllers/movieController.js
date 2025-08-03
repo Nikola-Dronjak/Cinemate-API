@@ -83,9 +83,9 @@ const movieController = {
                 genre: req.body.genre,
                 director: req.body.director,
                 releaseDate: req.body.releaseDate,
-                duration: req.body.duration,
+                duration: parseInt(req.body.duration, 10),
                 image: req.file.filename,
-                rating: req.body.rating
+                rating: parseFloat(req.body.rating)
             };
 
             const result = await getDb().collection('movies').insertOne(newMovie);
@@ -113,7 +113,8 @@ const movieController = {
             const screenings = await getDb().collection('screenings').find({ hallId: req.params.id }).toArray();
             if (screenings.length > 0) return res.status(409).send({ message: "You cannot update this movie because there are screenings associated with it. Please remove all screenings associated with this movie first." });
 
-            const { error } = validateMovie(req.body);
+            const { image, ...validatedBody } = req.body;
+            const { error } = validateMovie(validatedBody);
             if (error) return res.status(400).send({ message: error.details[0].message });
 
             const existingMovie = await getDb().collection('movies').findOne({
@@ -128,8 +129,8 @@ const movieController = {
                 genre: req.body.genre,
                 director: req.body.director,
                 releaseDate: req.body.releaseDate,
-                duration: req.body.duration,
-                rating: req.body.rating
+                duration: parseInt(req.body.duration, 10),
+                rating: parseFloat(req.body.rating)
             };
 
             if (req.file) {
