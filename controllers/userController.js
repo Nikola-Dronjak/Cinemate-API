@@ -52,9 +52,15 @@ const userController = {
 
             const result = await getDb().collection('users').insertOne(newUser);
             newUser._id = result.insertedId;
-            const token = jwt.sign({ userId: newUser._id, isAdmin: newUser.isAdmin }, 'jwtPrivateToken', { expiresIn: '1h' });
+
+            const accessToken = jwt.sign({ userId: newUser._id, isAdmin: newUser.isAdmin }, 'jwtPrivateToken', { expiresIn: '15m' });
+            const refreshToken = jwt.sign({ userId: newUser._id }, 'jwtPrivateToken', { expiresIn: '7d' });
+
+            await getDb().collection('users').updateOne({ _id: newUser._id }, { $set: { refreshToken } })
+
             res.status(201).header("Location", `${req.protocol}://${req.get("host")}/api/users/${newUser._id}`).send({
-                token,
+                accessToken: accessToken,
+                refreshToken: refreshToken,
                 user: {
                     _id: newUser._id,
                     username: newUser.username,
@@ -84,11 +90,50 @@ const userController = {
             const validPassword = await bcrypt.compare(req.body.password, user.password);
             if (!validPassword) return res.status(401).send({ message: "Invalid email or password." });
 
-            const token = jwt.sign({ userId: user._id, isAdmin: user.isAdmin }, 'jwtPrivateToken', { expiresIn: '1h' });
-            res.status(200).send(token);
+            const accessToken = jwt.sign({ userId: user._id, isAdmin: user.isAdmin }, 'jwtPrivateToken', { expiresIn: '15m' });
+            const refreshToken = jwt.sign({ userId: user._id }, 'jwtPrivateToken', { expiresIn: '7d' });
+
+            await getDb().collection('users').updateOne({ _id: user._id }, { $set: { refreshToken } })
+
+            res.status(200).send({
+                accessToken: accessToken,
+                refreshToken: refreshToken
+            });
         } catch (error) {
             console.error(error.stack);
             return res.status(500).send({ message: "Internal Server Error" });
+        }
+    },
+
+    async logoutUser(req, res) {
+        try {
+            await getDb().collection('users').updateOne({ _id: new ObjectId(req.body.userId) }, { $set: { refreshToken: null } });
+            res.status(200).send({ message: "Logged out successfully." });
+        } catch (error) {
+            console.error(error.stack);
+            return res.status(500).send({ message: "Internal Server Error" });
+        }
+    },
+
+    async refreshAccessToken(req, res) {
+        try {
+            const token = req.body.refreshToken;
+            if (!token) return res.status(401).send({ message: 'No refresh token provided.' });
+
+            const decoded = jwt.verify(token, 'jwtPrivateToken');
+            const user = await getDb().collection('users').findOne({ _id: new ObjectId(decoded.userId) });
+
+            if (!user || user.refreshToken !== token)
+                return res.status(403).send({ message: 'Invalid refresh token.' });
+
+            const newAccessToken = jwt.sign({ userId: user._id, isAdmin: user.isAdmin }, 'jwtPrivateToken', { expiresIn: '15m' });
+
+            res.status(200).send({
+                accessToken: newAccessToken
+            });
+        } catch (error) {
+            console.error(error.stack);
+            return res.status(403).send({ message: 'Refresh token expired or invalid.' });
         }
     },
 
@@ -151,12 +196,12 @@ const userController = {
             await getDb().collection('reservations').deleteMany({ userId: req.params.id });
 
             await getDb().collection('users').deleteOne({ _id: new ObjectId(req.params.id) });
-            const imagePath = path.join(__dirname, '../images', user.profilePicture);
-            fs.unlink(imagePath, (err) => {
-                if (err) {
-                    console.error(`Failed to delete image: ${imagePath}`, err);
-                }
-            });
+            if (user.profilePicture) {
+                const oldImagePath = path.join(__dirname, '../images', user.profilePicture);
+                fs.unlink(oldImagePath, (err) => {
+                    if (err) console.error(`Failed to delete old image: ${oldImagePath}`, err);
+                });
+            }
             return res.status(204).send();
         } catch (error) {
             console.error(error.stack);

@@ -29,6 +29,12 @@ router.post('/api/users/register', upload.single('profilePicture'), userControll
 // Login an existing user:
 router.post('/api/users/login', userController.loginUser);
 
+// Logout an existing user:
+router.post('/api/users/logout', auth, userController.logoutUser);
+
+// Refresh token:
+router.post('/api/users/refresh-token', userController.refreshAccessToken);
+
 // Update a user:
 router.put('/api/users/:id', [auth, upload.single('profilePicture')], userController.updateUser);
 
