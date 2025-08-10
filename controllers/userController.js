@@ -11,7 +11,9 @@ const loginValidation = require('../validation/loginValidation');
 const userController = {
     async getUser(req, res) {
         try {
-            const user = await getDb().collection('users').findOne({ _id: new ObjectId(req.params.id) }, { projection: { password: 0, isAdmin: 0 } });
+            if (req.user.userId !== req.params.id) return res.status(403).send({ message: "You are not authorized to perform this action." });
+
+            const user = await getDb().collection('users').findOne({ _id: new ObjectId(req.params.id) }, { projection: { password: 0, isAdmin: 0, refreshToken: 0 } });
             if (!user) return res.status(404).send({ message: "There is no user with the given id." });
             return res.status(200).send({
                 ...user,
@@ -107,8 +109,10 @@ const userController = {
 
     async logoutUser(req, res) {
         try {
+            if (req.user.userId !== req.body.userId) return res.status(403).send({ message: "You are not authorized to perform this action." });
+
             await getDb().collection('users').updateOne({ _id: new ObjectId(req.body.userId) }, { $set: { refreshToken: null } });
-            res.status(200).send({ message: "Logged out successfully." });
+            return res.status(200).send({ message: "Logged out successfully." });
         } catch (error) {
             console.error(error.stack);
             return res.status(500).send({ message: "Internal Server Error" });
@@ -139,6 +143,8 @@ const userController = {
 
     async updateUser(req, res) {
         try {
+            if (req.user.userId !== req.params.id) return res.status(403).send({ message: "You are not authorized to perform this action." });
+
             const user = await getDb().collection('users').findOne({ _id: new ObjectId(req.params.id) });
             if (!user) return res.status(404).send({ message: "There is no user with the given id." });
 
@@ -173,7 +179,7 @@ const userController = {
             }
 
             await getDb().collection('users').updateOne({ _id: new ObjectId(req.params.id) }, { $set: updatedUser });
-            updatedUser = await getDb().collection('users').findOne({ _id: new ObjectId(req.params.id) }, { projection: { password: 0, isAdmin: 0 } });
+            updatedUser = await getDb().collection('users').findOne({ _id: new ObjectId(req.params.id) }, { projection: { password: 0, isAdmin: 0, refreshToken: 0 } });
             return res.status(200).send({
                 ...updatedUser,
                 links: [
@@ -190,6 +196,8 @@ const userController = {
 
     async deleteUser(req, res) {
         try {
+            if (req.user.userId !== req.params.id) return res.status(403).send({ message: "You are not authorized to perform this action." });
+
             const user = await getDb().collection('users').findOne({ _id: new ObjectId(req.params.id) });
             if (!user) return res.status(404).send({ message: "There is no user with the given id." });
 
