@@ -13,13 +13,24 @@ const screeningController = {
             const { page, limit } = value;
             const skip = (page - 1) * limit;
 
-            const totalScreenings = await getDb().collection('screenings').countDocuments({ movieId: req.params.movieId });
-            const totalPages = Math.ceil(totalScreenings / limit);
-
             const movie = await getDb().collection('movies').findOne({ _id: new ObjectId(req.params.movieId) });
             if (!movie) return res.status(404).send({ message: "There is no movie with the given id." });
 
-            var screeningsOfMovie = await getDb().collection('screenings').find({ movieId: req.params.movieId }).skip(skip).limit(limit).toArray();
+            let filter = { movieId: req.params.movieId };
+            const upcomingOnly = req.query.upcomingOnly;
+            if (upcomingOnly === 'true') {
+                const now = new Date();
+                const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+                const nowFormatted = now.toISOString().slice(0, 10);
+                const sevenDaysFromNowFormatted = sevenDaysFromNow.toISOString().slice(0, 10);
+                filter.date = { $gte: nowFormatted, $lte: sevenDaysFromNowFormatted };
+            }
+
+            const totalScreenings = await getDb().collection('screenings').countDocuments(filter);
+            const totalPages = Math.ceil(totalScreenings / limit);
+
+            var screeningsOfMovie = await getDb().collection('screenings').find(filter).sort({ date: -1, time: -1 }).skip(skip).limit(limit).toArray();
             if (screeningsOfMovie.length === 0) return res.status(404).send({ message: "There are no screenings for this movie right now." });
             screeningsOfMovie = screeningsOfMovie.map(screening => ({
                 ...screening,

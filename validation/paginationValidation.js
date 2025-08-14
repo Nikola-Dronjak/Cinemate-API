@@ -11,6 +11,10 @@ module.exports = function validatePagination(queryParameters) {
                 'number.base': 'The limit must be a valid number.',
                 'number.min': 'The limit cannot be less than 1.',
                 'number.max': 'The limit cannot be less than 100.'
+            }),
+            upcomingOnly: Joi.boolean().truthy('true').falsy('false').default(false).messages({
+                'boolean.base': 'The upcomingOnly flag must be true or false.',
+                'any.only': 'The upcomingOnly flag must be either true or false.'
             })
         }
     );

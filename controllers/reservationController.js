@@ -19,7 +19,23 @@ const reservationController = {
             const user = await getDb().collection('users').findOne({ _id: new ObjectId(req.params.userId) });
             if (!user) return res.status(404).send({ message: "There is no user with the given userId." });
 
-            var reservationsOfUser = await getDb().collection('reservations').find({ userId: req.params.userId }).skip(skip).limit(limit).toArray();
+            var reservationsOfUser = await getDb().collection('reservations').aggregate([
+                { $match: { userId: req.params.userId } },
+                { $addFields: { screeningIdObj: { $toObjectId: "$screeningId" } } },
+                {
+                    $lookup: {
+                        from: 'screenings',
+                        localField: 'screeningIdObj',
+                        foreignField: '_id',
+                        as: 'screening'
+                    }
+                },
+                { $unwind: '$screening' },
+                { $sort: { 'screening.date': -1, 'screening.time': -1 } },
+                { $project: { screening: 0, screeningIdObj: 0 } },
+                { $skip: skip },
+                { $limit: limit }
+            ]).toArray();
             if (!reservationsOfUser.length) return res.status(404).send({ message: "No reservations were found for this user." });
             reservationsOfUser = reservationsOfUser.map(reservation => ({
                 ...reservation,

@@ -15,10 +15,26 @@ const movieController = {
             const { page, limit } = value;
             const skip = (page - 1) * limit;
 
-            const totalMovies = await getDb().collection('movies').countDocuments();
+            let filter = {}
+            const upcomingOnly = req.query.upcomingOnly;
+            if (upcomingOnly === 'true') {
+                const now = new Date();
+                const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+                const nowFormatted = now.toISOString().slice(0, 10);
+                const sevenDaysFromNowFormatted = sevenDaysFromNow.toISOString().slice(0, 10);
+
+                const movieIds = await getDb().collection('screenings').distinct('movieId', { date: { $gte: nowFormatted, $lte: sevenDaysFromNowFormatted } });
+                if (movieIds.length === 0) {
+                    return res.status(404).send({ message: "There are no movies with screenings in the next 7 days." });
+                }
+                filter = { _id: { $in: movieIds.map(id => new ObjectId(id)) } };
+            }
+
+            const totalMovies = await getDb().collection('movies').countDocuments(filter);
             const totalPages = Math.ceil(totalMovies / limit);
 
-            var movies = await getDb().collection('movies').find().skip(skip).limit(limit).toArray();
+            var movies = await getDb().collection('movies').find(filter).skip(skip).limit(limit).toArray();;
             if (movies.length === 0) return res.status(404).send({ message: "There are no movies in the database right now." });
             movies = movies.map(movie => ({
                 ...movie,
