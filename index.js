@@ -11,6 +11,9 @@ const movie = require('./routes/movie');
 const screening = require('./routes/screening');
 const reservation = require('./routes/reservation');
 
+// Registering CRON jobs:
+require('./cron/updateScreeningPricesJob')
+
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
