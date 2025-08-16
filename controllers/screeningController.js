@@ -204,13 +204,29 @@ const screeningController = {
                 }
             }
 
+            let eurToUSD = 0;
+            let eurToCHF = 0;
+            await fetch("https://api.frankfurter.dev/v1/latest?symbols=USD,CHF")
+                .then((resp) => resp.json())
+                .then((data) => {
+                    eurToUSD = data.rates.USD;
+                    eurToCHF = data.rates.CHF;
+                })
+                .catch((error) => {
+                    console.error(error.stack);
+                    return res.status(502).send({ message: "Failed to fetch exchange rates." });
+                });
+
             const newScreening = {
                 date: req.body.date,
                 time: req.body.time,
                 endTime: belgradeEndTimeFormatted,
-                numberOfAvailableSeats: hall.numberOfSeats,
                 movieId: req.body.movieId,
-                hallId: req.body.hallId
+                hallId: req.body.hallId,
+                numberOfAvailableSeats: hall.numberOfSeats,
+                priceEUR: req.body.priceEUR,
+                priceUSD: req.body.priceEUR * eurToUSD,
+                priceCHF: req.body.priceEUR * eurToCHF
             };
 
             const result = await getDb().collection('screenings').insertOne(newScreening);
@@ -324,15 +340,31 @@ const screeningController = {
             const newHall = await getDb().collection('halls').findOne({ _id: new ObjectId(req.body.hallId) });
             if (newHall.numberOfSeats < currentHall.numberOfSeats) return res.status(409).send({ message: "You cannot move the screening to a hall with a smaller capacity." });
 
+            let eurToUSD = 0;
+            let eurToCHF = 0;
+            await fetch("https://api.frankfurter.dev/v1/latest?symbols=USD,CHF")
+                .then((resp) => resp.json())
+                .then((data) => {
+                    eurToUSD = data.rates.USD;
+                    eurToCHF = data.rates.CHF;
+                })
+                .catch((error) => {
+                    console.error(error.stack);
+                    return res.status(502).send({ message: "Failed to fetch exchange rates." });
+                });
+
             const numberOfReservations = (await getDb().collection('reservations').find({ _id: new ObjectId(req.params.id) }).toArray()).length;
             await getDb().collection('screenings').updateOne({ _id: new ObjectId(req.params.id) }, {
                 $set: {
                     date: req.body.date,
                     time: req.body.time,
                     endTime: belgradeEndTimeFormatted,
-                    numberOfAvailableSeats: newHall.numberOfSeats - numberOfReservations,
                     movieId: req.body.movieId,
-                    hallId: req.body.hallId
+                    hallId: req.body.hallId,
+                    numberOfAvailableSeats: newHall.numberOfSeats - numberOfReservations,
+                    priceEUR: req.body.priceEUR,
+                    priceUSD: req.body.priceEUR * eurToUSD,
+                    priceCHF: req.body.priceEUR * eurToCHF
                 }
             });
 
