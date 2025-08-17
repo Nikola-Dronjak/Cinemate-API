@@ -20,6 +20,9 @@ router.post('/api/screenings', [auth, admin], screeningController.createScreenin
 // Update a screening:
 router.put('/api/screenings/:id', [auth, admin], screeningController.updateScreening);
 
+// Add a discount for a specific screening:
+router.put('/api/screenings/:id/discount', [auth, admin], screeningController.addDiscount);
+
 // Remove a screening:
 router.delete('/api/screenings/:id', [auth, admin], screeningController.deleteScreening);
 

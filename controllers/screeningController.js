@@ -224,9 +224,13 @@ const screeningController = {
                 movieId: req.body.movieId,
                 hallId: req.body.hallId,
                 numberOfAvailableSeats: hall.numberOfSeats,
-                priceEUR: req.body.priceEUR,
-                priceUSD: req.body.priceEUR * eurToUSD,
-                priceCHF: req.body.priceEUR * eurToCHF
+                basePriceEUR: req.body.basePriceEUR,
+                basePriceUSD: req.body.basePriceEUR * eurToUSD,
+                basePriceCHF: req.body.basePriceEUR * eurToCHF,
+                discount: 0,
+                priceEUR: req.body.basePriceEUR,
+                priceUSD: req.body.basePriceEUR * eurToUSD,
+                priceCHF: req.body.basePriceEUR * eurToCHF
             };
 
             const result = await getDb().collection('screenings').insertOne(newScreening);
@@ -249,10 +253,13 @@ const screeningController = {
 
     async updateScreening(req, res) {
         try {
-            // Check the date:
             const screening = await getDb().collection('screenings').findOne({ _id: new ObjectId(req.params.id) });
             if (!screening) return res.status(404).send({ message: "There is no screening with the given id." });
 
+            const reservations = await getDb().collection('reservations').find({ screeningId: req.params.id }).toArray();
+            if (reservations.length > 0) return res.status(409).send({ message: "You cannot update this screening because there are reservations associated with it. Please remove all reservations associated with this screening first." });
+
+            // Check the date:
             const screeningDate = new Date(screening.date);
             const currentDate = new Date();
             if (Math.round((screeningDate - currentDate) / (1000 * 60 * 60 * 24)) <= 1) return res.status(409).send({ message: "You cannot update a screening one day prior to it." });
@@ -362,9 +369,49 @@ const screeningController = {
                     movieId: req.body.movieId,
                     hallId: req.body.hallId,
                     numberOfAvailableSeats: newHall.numberOfSeats - numberOfReservations,
-                    priceEUR: req.body.priceEUR,
-                    priceUSD: req.body.priceEUR * eurToUSD,
-                    priceCHF: req.body.priceEUR * eurToCHF
+                    basePriceEUR: req.body.basePriceEUR,
+                    basePriceUSD: req.body.basePriceEUR * eurToUSD,
+                    basePriceCHF: req.body.basePriceEUR * eurToCHF,
+                    discount: req.body.discount,
+                    priceEUR: req.body.basePriceEUR * (1 - (req.body.discount / 100)),
+                    priceUSD: req.body.basePriceEUR * eurToUSD * (1 - (req.body.discount / 100)),
+                    priceCHF: req.body.basePriceEUR * eurToCHF * (1 - (req.body.discount / 100)),
+                }
+            });
+
+            const updatedScreening = await getDb().collection('screenings').findOne({ _id: new ObjectId(req.params.id) });
+            return res.status(200).send({
+                ...updatedScreening,
+                links: [
+                    { rel: 'self', href: `${req.protocol}://${req.get("host")}/api/movies/${updatedScreening.movieId}/screenings`, action: 'GET', types: [] },
+                    { rel: 'self', href: `${req.protocol}://${req.get("host")}/api/halls/${updatedScreening.hallId}/screenings`, action: 'GET', types: [] },
+                    { rel: 'self', href: `${req.protocol}://${req.get("host")}/api/screenings/${updatedScreening._id}`, action: 'GET', types: [] },
+                    { rel: 'self', href: `${req.protocol}://${req.get("host")}/api/screenings/${updatedScreening._id}`, action: 'PUT', types: ["application/json"] },
+                    { rel: 'self', href: `${req.protocol}://${req.get("host")}/api/screenings/${updatedScreening._id}`, action: 'DELETE', types: [] }
+                ]
+            });
+        } catch (error) {
+            console.error(error.stack);
+            return res.status(500).send({ message: "Internal Server Error" });
+        }
+    },
+
+    async addDiscount(req, res) {
+        try {
+            const screening = await getDb().collection('screenings').findOne({ _id: new ObjectId(req.params.id) });
+            if (!screening) return res.status(404).send({ message: "There is no screening with the given id." });
+
+            if (req.body.discount < 0 || req.body.discount > 100) return res.status(400).send({ message: "The discount for the movie screening must be between 0 and 100." });
+
+            const reservations = await getDb().collection('reservations').find({ screeningId: req.params.id }).toArray()
+            if (reservations.length > 0) return res.status(409).send({ message: "You cannot add a discount for a screening that already has reservations." });
+
+            await getDb().collection('screenings').updateOne({ _id: new ObjectId(req.params.id) }, {
+                $set: {
+                    discount: req.body.discount,
+                    priceEUR: screening.basePriceEUR * (1 - (req.body.discount / 100)),
+                    priceUSD: screening.basePriceUSD * (1 - (req.body.discount / 100)),
+                    priceCHF: screening.basePriceCHF * (1 - (req.body.discount / 100)),
                 }
             });
 

@@ -16,13 +16,26 @@ async function updatePrices() {
                 console.error("Failed to fetch exchange rates: " + error.stack);
             });
 
-        const screeningIds = await getDb().collection('reservations').distinct('screeningId');
+        const screeningIdsFromReservations = await getDb().collection('reservations').distinct('screeningId');
         await getDb().collection('screenings').updateMany(
             {
-                _id: { $nin: screeningIds },
+                _id: { $nin: screeningIdsFromReservations },
                 date: { $gt: new Date() }
             },
-            [{ $set: { priceUSD: { $round: [{ $multiply: ['$priceEUR', eurToUSD] }, 2] }, priceCHF: { $round: [{ $multiply: ['$priceEUR', eurToCHF] }, 2] } } }]
+            [
+                {
+                    $set: {
+                        basePriceUSD: { $multiply: ["$basePriceEUR", eurToUSD] },
+                        basePriceCHF: { $multiply: ["$basePriceEUR", eurToCHF] }
+                    }
+                },
+                {
+                    $set: {
+                        priceUSD: { $round: [{ $multiply: ["$basePriceEUR", eurToUSD, { $subtract: [1, { $divide: ["$discount", 100] }] }] }, 2] },
+                        priceCHF: { $round: [{ $multiply: ["$basePriceEUR", eurToCHF, { $subtract: [1, { $divide: ["$discount", 100] }] }] }, 2] }
+                    }
+                }
+            ]
         );
         console.log("Screening prices updated");
     } catch (error) {

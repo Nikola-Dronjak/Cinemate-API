@@ -15,7 +15,7 @@ module.exports = function validateScreening(screening) {
                 'string.pattern.base': 'Screening time must be in HH:MM format (24-hour).',
                 'any.required': 'You must enter a screening time.'
             }),
-            priceEUR: Joi.number().min(0).max(100).required().messages({
+            basePriceEUR: Joi.number().min(0).max(100).required().messages({
                 'number.base': 'The price of the ticket for the movie screening must be a valid number.',
                 'number.min': 'The price of the ticket for the movie screening cannot be less than 0 euros.',
                 'number.max': 'The price of the ticket for the movie screening cannot excede 100 euros.',
@@ -40,6 +40,6 @@ module.exports = function validateScreening(screening) {
                 'any.required': 'You must enter a hallId.'
             })
         }
-    );
+    ).unknown(true);
     return schema.validate(screening);
 }
