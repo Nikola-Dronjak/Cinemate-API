@@ -3,8 +3,8 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const crypto = require('crypto');
-const auth = require('../middleware/auth');
-const admin = require('../middleware/admin');
+const authenticate = require('../middleware/authenticate');
+const authorize = require('../middleware/authorize');
 
 const { movieController } = require('../controllers/movieController');
 
@@ -31,12 +31,12 @@ router.get('/api/movies', movieController.getMovies);
 router.get('/api/movies/:id', movieController.getMovie);
 
 // Create a movie:
-router.post('/api/movies', [auth, admin, upload.single('image')], movieController.createMovie);
+router.post('/api/movies', [authenticate, authorize(['Admin', 'Sales']), upload.single('image')], movieController.createMovie);
 
 // Update a movie:
-router.put('/api/movies/:id', [auth, admin, upload.single('image')], movieController.updateMovie);
+router.put('/api/movies/:id', [authenticate, authorize(['Admin', 'Sales']), upload.single('image')], movieController.updateMovie);
 
 // Remove a movie:
-router.delete('/api/movies/:id', [auth, admin], movieController.deleteMovie);
+router.delete('/api/movies/:id', [authenticate, authorize(['Admin', 'Sales'])], movieController.deleteMovie);
 
 module.exports = router;

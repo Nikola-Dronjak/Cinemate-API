@@ -5,15 +5,55 @@ const fs = require('fs');
 const path = require('path');
 
 const { getDb } = require('../database/db');
+const validatePagination = require('../validation/paginationValidation');
 const validateUser = require('../validation/userValidation');
+
 const loginValidation = require('../validation/loginValidation');
 
 const userController = {
+    async getUsers(req, res) {
+        try {
+            const { error, value } = validatePagination(req.query);
+            if (error) return res.status(400).send({ message: error.details[0].message });
+
+            const { page, limit } = value;
+            const skip = (page - 1) * limit;
+
+            const totalUsers = await getDb().collection('users').countDocuments();
+            const totalPages = Math.ceil(totalUsers / limit);
+
+            var users = await getDb().collection('users').find({}, { projection: { password: 0, refreshToken: 0 } }).skip(skip).limit(limit).toArray();
+            if (users.length === 0) return res.status(404).send({ message: "There are no users in the database right now." });
+            users = users.map(user => ({
+                ...user,
+                links: [
+                    { rel: 'self', href: `${req.protocol}://${req.get("host")}/api/user/${user._id}/role`, action: 'PATCH', types: ["application/json"] },
+                    { rel: 'self', href: `${req.protocol}://${req.get("host")}/api/user/${user._id}`, action: 'DELETE', types: [] }
+                ]
+            }));
+            return res.status(200).send({
+                page,
+                limit,
+                totalPages,
+                totalUsers,
+                users,
+                links: [
+                    ...(page > 1 ? [{ rel: 'prev', href: `${req.protocol}://${req.get("host")}/api/users?page=${page - 1}&limit=${limit}`, action: 'GET', types: [] }] : []),
+                    ...(page < totalPages ? [{ rel: 'next', href: `${req.protocol}://${req.get("host")}/api/users?page=${page + 1}&limit=${limit}`, action: 'GET', types: [] }] : []),
+                    { rel: 'self', href: `${req.protocol}://${req.get("host")}/api/users?page=${page}&limit=${limit}`, action: 'GET', types: [] }
+                ]
+            });
+        } catch (error) {
+            console.error(error.stack);
+            return res.status(500).send({ message: "Internal Server Error" });
+        }
+    },
+
     async getUser(req, res) {
         try {
             if (req.user.userId !== req.params.id) return res.status(403).send({ message: "You are not authorized to perform this action." });
 
-            const user = await getDb().collection('users').findOne({ _id: new ObjectId(req.params.id) }, { projection: { password: 0, isAdmin: 0, refreshToken: 0 } });
+            const user = await getDb().collection('users').findOne({ _id: new ObjectId(req.params.id) }, { projection: { password: 0, role: 0, refreshToken: 0 } });
             if (!user) return res.status(404).send({ message: "There is no user with the given id." });
             return res.status(200).send({
                 ...user,
@@ -33,7 +73,7 @@ const userController = {
 
     async registerUser(req, res) {
         try {
-            const { error } = validateUser(req.body, { isUpdate: false });
+            const { error } = validateUser(req.body, { isUpdate: false, changedRole: false });
             if (error) return res.status(400).send({ message: error.details[0].message });
 
             const username = await getDb().collection('users').findOne({ username: req.body.username });
@@ -48,14 +88,14 @@ const userController = {
                 username: req.body.username,
                 email: req.body.email,
                 password: await bcrypt.hash(req.body.password, salt),
-                isAdmin: false,
+                role: "Customer",
                 profilePicture: null
             };
 
             const result = await getDb().collection('users').insertOne(newUser);
             newUser._id = result.insertedId;
 
-            const accessToken = jwt.sign({ userId: newUser._id, isAdmin: newUser.isAdmin }, 'jwtPrivateToken', { expiresIn: '15m' });
+            const accessToken = jwt.sign({ userId: newUser._id, role: newUser.role }, 'jwtPrivateToken', { expiresIn: '15m' });
             const refreshToken = jwt.sign({ userId: newUser._id }, 'jwtPrivateToken', { expiresIn: '7d' });
 
             await getDb().collection('users').updateOne({ _id: newUser._id }, { $set: { refreshToken } })
@@ -92,7 +132,7 @@ const userController = {
             const validPassword = await bcrypt.compare(req.body.password, user.password);
             if (!validPassword) return res.status(401).send({ message: "Invalid email or password." });
 
-            const accessToken = jwt.sign({ userId: user._id, isAdmin: user.isAdmin }, 'jwtPrivateToken', { expiresIn: '15m' });
+            const accessToken = jwt.sign({ userId: user._id, role: user.role }, 'jwtPrivateToken', { expiresIn: '15m' });
             const refreshToken = jwt.sign({ userId: user._id }, 'jwtPrivateToken', { expiresIn: '7d' });
 
             await getDb().collection('users').updateOne({ _id: user._id }, { $set: { refreshToken } })
@@ -130,7 +170,7 @@ const userController = {
             if (!user || user.refreshToken !== token)
                 return res.status(403).send({ message: 'Invalid refresh token.' });
 
-            const newAccessToken = jwt.sign({ userId: user._id, isAdmin: user.isAdmin }, 'jwtPrivateToken', { expiresIn: '15m' });
+            const newAccessToken = jwt.sign({ userId: user._id, role: user.role }, 'jwtPrivateToken', { expiresIn: '15m' });
 
             res.status(200).send({
                 accessToken: newAccessToken
@@ -148,7 +188,7 @@ const userController = {
             const user = await getDb().collection('users').findOne({ _id: new ObjectId(req.params.id) });
             if (!user) return res.status(404).send({ message: "There is no user with the given id." });
 
-            const { error } = validateUser(req.body, { isUpdate: true });
+            const { error } = validateUser(req.body, { isUpdate: true, changedRole: false });
             if (error) return res.status(400).send({ message: error.details[0].message });
 
             const existingUser = await getDb().collection('users').findOne({
@@ -179,7 +219,7 @@ const userController = {
             }
 
             await getDb().collection('users').updateOne({ _id: new ObjectId(req.params.id) }, { $set: updatedUser });
-            updatedUser = await getDb().collection('users').findOne({ _id: new ObjectId(req.params.id) }, { projection: { password: 0, isAdmin: 0, refreshToken: 0 } });
+            updatedUser = await getDb().collection('users').findOne({ _id: new ObjectId(req.params.id) }, { projection: { password: 0, role: 0, refreshToken: 0 } });
             return res.status(200).send({
                 ...updatedUser,
                 links: [
@@ -194,9 +234,33 @@ const userController = {
         }
     },
 
+    async changeUserRole(req, res) {
+        try {
+            const user = await getDb().collection('users').findOne({ _id: new ObjectId(req.params.id) });
+            if (!user) return res.status(404).send({ message: "There is no user with the given id." });
+
+            const { error } = validateUser(req.body, { isUpdate: false, changedRole: true });
+            if (error) return res.status(400).send({ message: error.details[0].message });
+
+            await getDb().collection('users').updateOne({ _id: new ObjectId(req.params.id) }, { $set: { role: req.body.role } });
+            const updatedUser = await getDb().collection('users').findOne({ _id: new ObjectId(req.params.id) }, { projection: { password: 0, refreshToken: 0 } });
+            return res.status(200).send({
+                ...updatedUser,
+                links: [
+                    { rel: 'self', href: `${req.protocol}://${req.get("host")}/api/users/${user._id}`, action: 'GET', types: [] },
+                    { rel: 'self', href: `${req.protocol}://${req.get("host")}/api/user/${user._id}/role`, action: 'PATCH', types: ["application/json"] },
+                    { rel: 'self', href: `${req.protocol}://${req.get("host")}/api/user/${user._id}`, action: 'DELETE', types: [] }
+                ]
+            });
+        } catch (error) {
+            console.error(error.stack);
+            return res.status(500).send({ message: "Internal Server Error" });
+        }
+    },
+
     async deleteUser(req, res) {
         try {
-            if (req.user.userId !== req.params.id) return res.status(403).send({ message: "You are not authorized to perform this action." });
+            if (req.user.role !== 'Admin' && req.user.userId !== req.params.id) return res.status(403).send({ message: "You are not authorized to perform this action." });
 
             const user = await getDb().collection('users').findOne({ _id: new ObjectId(req.params.id) });
             if (!user) return res.status(404).send({ message: "There is no user with the given id." });
