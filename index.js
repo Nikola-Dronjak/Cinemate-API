@@ -1,5 +1,6 @@
 const cors = require('cors');
 const express = require('express');
+const dotenv = require('dotenv');
 const app = express();
 
 const { connectToDatabase } = require('./database/db');
@@ -13,6 +14,9 @@ const reservation = require('./routes/reservation');
 
 // Registering CRON jobs:
 require('./cron/updateScreeningPricesJob')
+
+// Configuring .env:
+dotenv.config();
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());

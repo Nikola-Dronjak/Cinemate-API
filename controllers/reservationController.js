@@ -1,6 +1,7 @@
 const { ObjectId } = require('mongodb');
 
 const { getDb } = require('../database/db');
+const { client, checkoutNodeJssdk } = require('../payment/paypalClient');
 const validatePagination = require('../validation/paginationValidation');
 const validateReservation = require('../validation/reservationValidation');
 
@@ -66,7 +67,7 @@ const reservationController = {
 
     async createReservation(req, res) {
         try {
-            const { error } = validateReservation(req.body);
+            const { error } = validateReservation(req.body, { isCreate: true });
             if (error) return res.status(400).send({ message: error.details[0].message });
 
             const user = await getDb().collection('users').findOne({ _id: new ObjectId(req.body.userId) });
@@ -83,12 +84,72 @@ const reservationController = {
             });
             if (existingReservation !== null) return res.status(409).send({ message: "You already made a reservation for this movie." });
 
+            if (screening.numberOfAvailableSeats === 0) return res.status(409).send({ message: "There are no available seats for this screening." });
+
+            let amountValue;
+            switch (req.body.currency) {
+                case "EUR":
+                    amountValue = screening.priceEUR.toFixed(2);
+                    break;
+                case "USD":
+                    amountValue = screening.priceUSD.toFixed(2);
+                    break;
+                case "CHF":
+                    amountValue = screening.priceCHF.toFixed(2);
+                    break;
+                default:
+                    return res.status(400).send({ message: "Unsupported currency." });
+            }
+
+            const request = new checkoutNodeJssdk.orders.OrdersCreateRequest();
+            request.prefer("return=representation");
+            request.requestBody({
+                intent: "CAPTURE",
+                purchase_units: [
+                    {
+                        amount: {
+                            currency_code: req.body.currency,
+                            value: amountValue
+                        }
+                    }
+                ],
+                application_context: {
+                    return_url: `${req.body.redirectUrl}`,
+                    cancel_url: `${req.body.redirectUrl}`
+                }
+            });
+
+            const order = await client().execute(request);
+            res.status(201).send({
+                orderId: order.result.id,
+                approvalUrl: order.result.links.find(link => link.rel === "approve").href,
+                links: [
+                    { rel: 'self', href: `${req.protocol}://${req.get("host")}/api/reservations/${order.result.id}`, action: 'POST', types: ["application/json"] }
+                ]
+            });
+        } catch (error) {
+            console.error(error.stack);
+            return res.status(500).send({ message: "Internal Server Error" });
+        }
+    },
+
+    async confirmReservation(req, res) {
+        try {
+            const { error } = validateReservation(req.body, { isCreate: false });
+            if (error) return res.status(400).send({ message: error.details[0].message });
+
+            const request = new checkoutNodeJssdk.orders.OrdersCaptureRequest(req.params.orderId);
+            request.requestBody({});
+            const capture = await client().execute(request);
+
+            if (capture.result.status !== "COMPLETED") {
+                return res.status(400).send({ message: "Payment not completed." });
+            }
+
             const newReservation = {
                 userId: req.body.userId,
                 screeningId: req.body.screeningId
             };
-
-            if (screening.numberOfAvailableSeats === 0) return res.status(409).send({ message: "There are no available seats for this screening." });
 
             const result = await getDb().collection('reservations').insertOne(newReservation);
             newReservation._id = result.insertedId;
@@ -104,9 +165,9 @@ const reservationController = {
                     { rel: 'self', href: `${req.protocol}://${req.get("host")}/api/reservations/${newReservation._id}`, action: 'DELETE', types: [] }
                 ]
             });
-        } catch (error) {
-            console.error(error.stack);
-            return res.status(500).send({ message: "Internal Server Error" });
+        } catch (err) {
+            console.error(err);
+            res.status(500).json({ message: "Error confirming reservation" });
         }
     },
 
